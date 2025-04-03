@@ -1,13 +1,16 @@
 import streamlit as st
 import pandas as pd
 from juntar_bases import juntar_bases
+import unicodedata
 
 from filtradores.novo import filtro_novo
 from filtradores.beneficio import filtro_beneficio
 from filtradores.cartao import filtro_cartao
 from filtradores.beneficio_cartao import filtro_beneficio_e_cartao
 
-
+st.set_page_config(layout="wide",
+                   initial_sidebar_state='expanded',
+                   page_title='Filtrador de Campanhas V2')
 
 # Listas e configurações iniciais
 lista_codigos_bancos = ['2', '33', '74', '243', '422', '465', '623', '643', '707', '955', '6613']
@@ -62,6 +65,13 @@ if arquivos:
                 f"Selecione os vínculos que deseja excluir do convênio {convenio}",
                 options=vinculo
             )
+
+        checkbox_acentos = st.sidebar.checkbox("Remover acentos")
+        if checkbox_acentos:
+            remover_acentos = True
+
+
+        somar_margem_compra = st.sidebar.checkbox("Somar Saque e Compra?")
 
         # Só mostrar a configuração de bancos após selecionar o número
         if quant_bancos > 0:
@@ -219,9 +229,9 @@ if arquivos:
                                                     comissao_minima, margem_emprestimo_limite, selecao_lotacao,
                                                     selecao_vinculos, configuracoes)
                 elif campanha == 'Benefício':
-                    base_filtrada = filtro_beneficio(base, convenio, quant_bancos,
-                                                        comissao_minima, margem_emprestimo_limite, selecao_lotacao,
-                                                        selecao_vinculos, configuracoes)
+                    base_filtrada = filtro_beneficio(base, convenio, quant_bancos, somar_margem_compra, comissao_minima, margem_emprestimo_limite, 
+                                                     selecao_lotacao, selecao_vinculos, configuracoes)
+                    st.write(somar_margem_compra)
                 elif campanha == 'Cartão':
                     base_filtrada = filtro_cartao(base, convenio, quant_bancos,
                                                   comissao_minima, margem_emprestimo_limite,
@@ -237,7 +247,15 @@ if arquivos:
                     
 
                 
+                def remover_acentos(x):
+                    if pd.isna(x):
+                        return x
+                    return unicodedata.normalize('NFKD', str(x)).encode('ascii', 'ignore').decode('utf-8')
+                
                 def convert_df(df):
+                    if remover_acentos:
+                        df['Nome_Cliente'] = df['Nome_Cliente'].apply(remover_acentos)
+                        return df.to_csv(index=False, sep = ';').encode('utf-8')
                     return df.to_csv(index=False, sep = ';').encode('utf-8')
 
                 csv = convert_df(base_filtrada)
